@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stress Detection - User Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    /* Custom animations */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .animate-fadeInUp {
+      animation: fadeInUp 0.8s ease-out forwards;
+    }
+    .animate-pulse {
+      animation: pulse 2s infinite;
+    }
+    .hover-lift {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .hover-lift:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+    }
+    .nav-link {
+      position: relative;
+    }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      width: 0;
+      height: 2px;
+      bottom: -2px;
+      left: 0;
+      background-color: #fff;
+      transition: width 0.3s ease;
+    }
+    .nav-link:hover::after {
+      width: 100%;
+    }
+    .gradient-text {
+      background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="bg-cover bg-center bg-no-repeat min-h-screen flex flex-col" style="background-image: url('/static/image/stress.png');">
+
+  <!-- 🔷 Navbar -->
+  <nav class="bg-blue-700 p-4 sticky top-0 shadow-lg z-10">
+    <div class="container mx-auto flex justify-between items-center">
+      <a href="/" class="text-white text-3xl font-extrabold tracking-tight animate-fadeInUp">Stress Detection</a>
+      <div class="space-x-6">
+        <a href="/home" class="text-white text-lg font-medium nav-link transition duration-300">Home</a>
+        <a href="/tools/model-training" class="text-white text-lg font-medium nav-link transition duration-300">Model Training</a>
+        <a href="/tools/prediction" class="text-white text-lg font-medium nav-link transition duration-300">Prediction</a>
+        <a href="/logout" class="text-white text-lg font-medium nav-link transition duration-300">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 🔷 Main Content -->
+  <div class="container mx-auto mt-12 p-6 flex-grow">
+    <div class="bg-white bg-opacity-95 rounded-xl shadow-2xl p-10 max-w-6xl w-full mx-auto animate-fadeInUp hover-lift">
+      <p class="text-4xl font-extrabold gradient-text mb-8 animate-fadeInUp">Welcome, {{ session['username'] }}!</p>
+
+      <!-- 🔷 Dashboard Cards Section -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- 🔹 Model Training -->
+        <div class="bg-blue-50 p-6 rounded-lg shadow-md hover-lift animate-fadeInUp" style="animation-delay: 0.2s;">
+          <h2 class="text-2xl font-semibold text-blue-700 mb-4">Model Training</h2>
+          <p class="text-gray-600 mb-4">Train custom machine learning models using your physiological data for enhanced stress detection.</p>
+          <a href="/tools/model-training" class="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-300 hover-lift animate-pulse">Train Model</a>
+        </div>
+
+        <!-- 🔹 Prediction -->
+        <div class="bg-blue-50 p-6 rounded-lg shadow-md hover-lift animate-fadeInUp" style="animation-delay: 0.3s;">
+          <h2 class="text-2xl font-semibold text-blue-700 mb-4">Prediction</h2>
+          <p class="text-gray-600 mb-4">Use our trained models to predict stress levels from your physiological data.</p>
+          <a href="/tools/prediction" class="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-300 hover-lift animate-pulse">Make Prediction</a>
+        </div>
+
+        <!-- 🔹 Visualize Stress Trends -->
+        <div class="bg-blue-50 p-6 rounded-lg shadow-md hover-lift animate-fadeInUp" style="animation-delay: 0.4s;">
+          <h2 class="text-2xl font-semibold text-blue-700 mb-4">Visualize Stress Trends</h2>
+          <p class="text-gray-600 mb-4">Track how your stress levels change over time through visual charts and timelines.</p>
+          <a href="/tools/stress-trends" class="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-300 hover-lift animate-pulse">View Trends</a>
+        </div>
+
+        <!-- 🔹 Insights & Reports -->
+        <div class="bg-blue-50 p-6 rounded-lg shadow-md hover-lift animate-fadeInUp" style="animation-delay: 0.5s;">
+          <h2 class="text-2xl font-semibold text-blue-700 mb-4">Insights & Reports</h2>
+          <p class="text-gray-600 mb-4">Explore intelligent summaries and download detailed reports on your stress analysis.</p>
+          <a href="/tools/reports" class="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-300 hover-lift animate-pulse">Explore Reports</a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔷 Footer -->
+  <footer class="bg-blue-700 text-white py-4 mt-auto">
+    <div class="container mx-auto text-center">
+      <p class="text-sm animate-fadeInUp" style="animation-delay: 0.8s;">© 2025 Stress Detection Platform. All rights reserved.</p>
+    </div>
+  </footer>
+</body>
+</html>

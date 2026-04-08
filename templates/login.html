@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stress Detection - Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    /* 🔷 Background image and overlay */
+    body {
+      background-image: url('/static/image/stress.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      position: relative;
+    }
+    .bg-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom, rgba(255, 255, 255, 0.7), rgba(59, 130, 246, 0.2));
+      z-index: -1;
+    }
+
+    /* 🔷 Animations & Effects */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.05);
+      }
+    }
+    .animate-fadeInUp {
+      animation: fadeInUp 0.8s ease-out forwards;
+    }
+    .animate-pulse {
+      animation: pulse 2s infinite;
+    }
+    .hover-lift {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .hover-lift:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+    }
+    .nav-link {
+      position: relative;
+    }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      width: 0;
+      height: 2px;
+      bottom: -2px;
+      left: 0;
+      background-color: #fff;
+      transition: width 0.3s ease;
+    }
+    .nav-link:hover::after {
+      width: 100%;
+    }
+    .input-focus {
+      transition: all 0.3s ease;
+    }
+    .input-focus:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+    .gradient-text {
+      background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    /* Hide error message by default */
+    .error-message {
+      display: none;
+    }
+    .error-message.show {
+      display: block;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- 🔷 Background Overlay -->
+  <div class="bg-overlay"></div>
+
+  <!-- 🔷 Navbar -->
+  <nav class="bg-blue-700 p-4 sticky top-0 shadow-lg z-10">
+    <div class="container mx-auto flex justify-between items-center">
+      <a href="/" class="text-white text-3xl font-extrabold tracking-tight animate-fadeInUp">Stress Detection</a>
+      <div class="space-x-6">
+        <a href="/index" class="text-white text-lg font-medium nav-link transition duration-300">Index</a>
+        <a href="/about" class="text-white text-lg font-medium nav-link transition duration-300">About</a>
+        <a href="/register" class="text-white text-lg font-medium nav-link transition duration-300">Register</a>
+        <a href="/login" class="text-white text-lg font-medium nav-link transition duration-300">Login</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 🔷 Login Form -->
+  <div class="container mx-auto mt-12 p-6 flex-grow flex items-center justify-center z-10">
+    <div class="bg-white bg-opacity-95 rounded-xl shadow-2xl p-10 max-w-md w-full animate-fadeInUp hover-lift">
+      <h1 class="text-5xl font-extrabold text-center gradient-text mb-8">Welcome Back</h1>
+
+      <!-- 🔷 Error Message (Hidden by Default) -->
+      <div id="error-message" class="error-message bg-red-100 text-red-800 p-4 rounded-md mb-6 text-center animate-fadeInUp" style="animation-delay: 0.2s;">
+        Invalid email or password. Please try again.
+      </div>
+
+      <!-- 🔷 Form -->
+      <form action="/login" method="POST" class="space-y-6" id="login-form">
+        <div class="animate-fadeInUp" style="animation-delay: 0.3s;">
+          <label for="email" class="block text-gray-600 font-medium mb-2">Email</label>
+          <input type="email" id="email" name="email" class="w-full px-4 py-3 border rounded-md input-focus" placeholder="Enter your email" required>
+        </div>
+        <div class="animate-fadeInUp" style="animation-delay: 0.4s;">
+          <label for="password" class="block text-gray-600 font-medium mb-2">Password</label>
+          <input type="password" id="password" name="password" class="w-full px-4 py-3 border rounded-md input-focus" placeholder="Enter your password" required>
+        </div>
+        <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-md hover:from-blue-700 hover:to-indigo-700 transition duration-300 font-semibold hover-lift animate-pulse animate-fadeInUp" style="animation-delay: 0.5s;">
+          Login
+        </button>
+      </form>
+
+      <!-- 🔷 Register Link -->
+      <p class="text-gray-600 text-center mt-6 animate-fadeInUp" style="animation-delay: 0.6s;">
+        Don't have an account? 
+        <a href="/register" class="text-blue-600 font-semibold hover:underline transition duration-300">Register here</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- 🔷 JavaScript for Client-Side Error Handling (Optional) -->
+  <script>
+    // Example: Show error message based on URL parameter (e.g., ?error=invalid)
+    document.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('error') === 'invalid') {
+        document.getElementById('error-message').classList.add('show');
+      }
+    });
+  </script>
+</body>
+</html>

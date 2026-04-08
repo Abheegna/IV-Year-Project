@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Model Accuracy - Stress Detection</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Custom animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+        .animate-fadeInUp {
+            animation: fadeInUp 0.8s ease-out forwards;
+        }
+        .animate-pulse {
+            animation: pulse 2s infinite;
+        }
+        .hover-lift {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .hover-lift:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+        }
+        .nav-link {
+            position: relative;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -2px;
+            left: 0;
+            background-color: #fff;
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        .input-focus {
+            transition: all 0.3s ease;
+        }
+        .input-focus:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        .gradient-text {
+            background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-cover bg-center bg-no-repeat min-h-screen flex flex-col" style="background-image: url('/static/image/stress.png');">
+    <!-- 🔷 Navbar -->
+    <nav class="bg-blue-700 p-4 sticky top-0 shadow-lg z-10">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="/" class="text-white text-3xl font-extrabold tracking-tight animate-fadeInUp">Stress Detection</a>
+            <div class="space-x-6">
+                <a href="/home" class="text-white text-lg font-medium nav-link transition duration-300">Home</a>
+                <a href="/tools/model-training" class="text-white text-lg font-medium nav-link transition duration-300">Model Training</a>
+                <a href="/tools/prediction" class="text-white text-lg font-medium nav-link transition duration-300">Prediction</a>
+                <a href="/logout" class="text-white text-lg font-medium nav-link transition duration-300">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 🔷 Main Content -->
+    <div class="container mx-auto mt-12 p-6 flex-grow">
+        <div class="bg-white rounded-xl shadow-2xl p-10 max-w-2xl w-full mx-auto animate-fadeInUp hover-lift">
+            <h1 class="text-4xl font-extrabold text-center gradient-text mb-8 animate-fadeInUp">Select Model</h1>
+
+            <!-- 🔷 Form -->
+            <form method="POST" class="space-y-6">
+                <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
+                    <label for="model" class="block text-lg font-medium text-gray-700 mb-2">Select a Model:</label>
+                    <select name="model" id="model" required class="w-full p-3 border border-gray-300 rounded-md input-focus">
+                        <option value="">-- Choose Model --</option>
+                        <option value="MLPClassifier" {% if selected_model == "MLPClassifier" %}selected{% endif %}>MLP Classifier</option>
+                        <option value="DecisionTreeClassifier" {% if selected_model == "DecisionTreeClassifier" %}selected{% endif %}>Decision Tree Classifier</option>
+                        <option value="LogisticRegression" {% if selected_model == "LogisticRegression" %}selected{% endif %}>Logistic Regression</option>
+                        <option value="RandomForestClassifier" {% if selected_model == "RandomForestClassifier" %}selected{% endif %}>Random Forest Classifier</option>
+                    </select>
+                </div>
+
+                <div class="text-center animate-fadeInUp" style="animation-delay: 0.3s;">
+                    <button type="submit" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-md hover:from-blue-700 hover:to-indigo-700 transition duration-300 font-semibold hover-lift animate-pulse">Show Accuracy</button>
+                </div>
+            </form>
+
+            <!-- 🔷 Accuracy Result -->
+            {% if accuracy %}
+                <div class="mt-6 text-center text-green-700 text-xl font-semibold animate-fadeInUp" style="animation-delay: 0.4s;">
+                    Accuracy of <strong>{{ selected_model }}</strong>: {{ accuracy }}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 🔷 Footer -->
+    <footer class="bg-blue-700 text-white py-4 mt-auto">
+        <div class="container mx-auto text-center">
+            <p class="text-sm animate-fadeInUp" style="animation-delay: 0.5s;">© 2025 Stress Detection Platform. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

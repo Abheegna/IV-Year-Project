@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stress Detection - Prediction</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    /* Custom animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.05);
+      }
+    }
+    .animate-fadeInUp {
+      animation: fadeInUp 0.8s ease-out forwards;
+    }
+    .animate-pulse {
+      animation: pulse 2s infinite;
+    }
+    .hover-lift {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .hover-lift:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+    }
+    .nav-link {
+      position: relative;
+    }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      width: 0;
+      height: 2px;
+      bottom: -2px;
+      left: 0;
+      background-color: #fff;
+      transition: width 0.3s ease;
+    }
+    .nav-link:hover::after {
+      width: 100%;
+    }
+    .input-focus {
+      transition: all 0.3s ease;
+    }
+    .input-focus:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+    .gradient-text {
+      background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+
+<body
+  class="bg-cover bg-center bg-no-repeat min-h-screen flex flex-col"
+  style="background-image: url('/static/image/stress.png');"
+>
+  <!-- 🔷 Navbar -->
+  <nav class="bg-blue-700 p-4 sticky top-0 shadow-lg z-10">
+    <div class="container mx-auto flex justify-between items-center">
+      <a href="/" class="text-white text-3xl font-extrabold tracking-tight animate-fadeInUp">Stress Detection</a>
+      <div class="space-x-6">
+        <a href="/home" class="text-white text-lg font-medium nav-link transition duration-300">Home</a>
+        <a href="/tools/model-training" class="text-white text-lg font-medium nav-link transition duration-300">Model Training</a>
+        <a href="/tools/prediction" class="text-white text-lg font-medium nav-link transition duration-300">Prediction</a>
+        <a href="/logout" class="text-white text-lg font-medium nav-link transition duration-300">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 🔷 Main Content -->
+  <div class="container mx-auto mt-12 p-6 flex-grow">
+    <div class="bg-white rounded-xl shadow-2xl p-10 max-w-4xl w-full mx-auto animate-fadeInUp hover-lift">
+      <h1 class="text-5xl font-extrabold gradient-text mb-6 text-center animate-fadeInUp">Stress Level Prediction</h1>
+      <p class="text-lg text-gray-600 mb-6 leading-relaxed text-center animate-fadeInUp" style="animation-delay: 0.2s;">
+        Enter your physiological data to predict your stress level using our trained machine learning models.
+      </p>
+
+      <!-- 🔷 Prediction Result -->
+      <div id="prediction-result" class="mb-8 bg-blue-50 p-6 rounded-lg shadow-md hover-lift hidden animate-fadeInUp text-center" style="animation-delay: 0.3s;">
+        <h2 class="text-2xl font-semibold text-blue-700 mb-4">Prediction Result</h2>
+        <p id="result-text" class="text-lg text-gray-600">Stress Level: <span id="stress-level" class="font-semibold"></span></p>
+      </div>
+
+      <!-- 🔷 Model Selection -->
+      <div class="mb-8 animate-fadeInUp" style="animation-delay: 0.4s;">
+        <label for="model-select" class="block text-lg font-semibold text-gray-700 mb-2 text-center">Select Model</label>
+        <select id="model-select" name="model" class="w-full max-w-md mx-auto p-3 border border-gray-300 rounded-md input-focus">
+          <option value="" disabled selected>-- Choose Model --</option>
+          <option value="MLPClassifier">MLP Classifier</option>
+          <option value="DecisionTreeClassifier">Decision Tree Classifier</option>
+          <option value="LogisticRegression">Logistic Regression</option>
+          <option value="RandomForestClassifier">Random Forest Classifier</option>
+        </select>
+      </div>
+
+      <!-- 🔷 Input Form -->
+      <div class="bg-blue-50 p-6 rounded-lg shadow-md hover-lift animate-fadeInUp" style="animation-delay: 0.5s;">
+        <h2 class="text-2xl font-semibold text-blue-700 mb-4 text-center">Input Physiological Data</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <!-- Inputs (unchanged) -->
+          <div class="animate-fadeInUp" style="animation-delay: 0.6s;">
+            <label for="snoring_rate" class="block text-gray-700 font-medium mb-1">Snoring Rate</label>
+            <input type="number" id="snoring_rate" step="0.01" class="w-full p-3 border border-gray-300 rounded-md input-focus" required>
+          </div>
+          <div class="animate-fadeInUp" style="animation-delay: 0.7s;">
+            <label for="respiration_rate" class="block text-gray-700 font-medium mb-1">Respiration Rate</label>
+            <input type="number" id="respiration_rate" step="0.01" class="w-full p-3 border border-gray-300 rounded-md input-focus" required>
+          </div>
+          <div class="animate-fadeInUp" style="animation-delay: 0.8s;">
+            <label for="body_temperature" class="block text-gray-700 font-medium mb-1">Body Temperature</label>
+            <input type="number" id="body_temperature" step="0.01" class="w-full p-3 border border-gray-300 rounded-md input-focus" required>
+          </div>
+          <div class="animate-fadeInUp" style="animation-delay: 0.9s;">
+            <label for="limb_movement" class="block text-gray-700 font-medium mb-1">Limb Movement</label>
+            <input type="number" id="limb_movement" step="0.01" class="w-full p-3 border border-gray-300 rounded-md input-focus" required>
+          </div>
+          <div class="animate-fadeInUp" style="animation-delay: 1.0s;">
+            <label for="blood_oxygen" class="block text-gray-700 font-medium mb-1">Blood Oxygen</label>
+            <input type="number" id="blood_oxygen" step="0.01" class="w-full p-3 border border-gray-300 rounded-md input-focus" required>
+          </div>
+          <div class="animate-fadeInUp" style="animation-delay: 1.1s;">
+            <label for="eye_movement" class="block text-gray-700 font-medium mb-1">Eye Movement</label>
+            <input type="number" id="eye_movement" step="0.01" class="w-full p-3 border border-gray-300 rounded-md input-focus" required>
+          </div>
+          <div class="animate-fadeInUp" style="animation-delay: 1.2s;">
+            <label for="sleeping_hours" class="block text-gray-700 font-medium mb-1">Sleeping Hours</label>
+            <input type="number" id="sleeping_hours" step="0.01" class="w-full p-3 border border-gray-300 rounded-md input-focus" required>
+          </div>
+          <div class="animate-fadeInUp" style="animation-delay: 1.3s;">
+            <label for="heart_rate" class="block text-gray-700 font-medium mb-1">Heart Rate</label>
+            <input type="number" id="heart_rate" step="0.01" class="w-full p-3 border border-gray-300 rounded-md input-focus" required>
+          </div>
+        </div>
+        <div class="text-center">
+          <button onclick="predictStressLevel()" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-md hover:from-blue-700 hover:to-indigo-700 transition duration-300 font-semibold hover-lift animate-pulse animate-fadeInUp" style="animation-delay: 1.4s;">
+            Predict Stress Level
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔷 Footer -->
+  <footer class="bg-blue-700 text-white py-4 mt-auto">
+    <div class="container mx-auto text-center">
+      <p class="text-sm animate-fadeInUp" style="animation-delay: 1.5s;">© 2025 Stress Detection Platform. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- 🔷 JavaScript -->
+  <script>
+    async function predictStressLevel() {
+      const modelSelect = document.getElementById('model-select').value;
+      const snoringRate = document.getElementById('snoring_rate').value;
+      const respirationRate = document.getElementById('respiration_rate').value;
+      const bodyTemperature = document.getElementById('body_temperature').value;
+      const limbMovement = document.getElementById('limb_movement').value;
+      const bloodOxygen = document.getElementById('blood_oxygen').value;
+      const eyeMovement = document.getElementById('eye_movement').value;
+      const sleepingHours = document.getElementById('sleeping_hours').value;
+      const heartRate = document.getElementById('heart_rate').value;
+
+      const resultDiv = document.getElementById('prediction-result');
+      const resultText = document.getElementById('stress-level');
+
+      if (!modelSelect || !snoringRate || !respirationRate || !bodyTemperature || !limbMovement || !bloodOxygen || !eyeMovement || !sleepingHours || !heartRate) {
+        resultDiv.classList.remove('hidden');
+        resultText.textContent = 'Please fill all fields and select a model.';
+        resultText.classList.add('text-red-600');
+        resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: modelSelect,
+            snoring_rate: parseFloat(snoringRate),
+            respiration_rate: parseFloat(respirationRate),
+            body_temperature: parseFloat(bodyTemperature),
+            limb_movement: parseFloat(limbMovement),
+            blood_oxygen: parseFloat(bloodOxygen),
+            eye_movement: parseFloat(eyeMovement),
+            sleeping_hours: parseFloat(sleepingHours),
+            heart_rate: parseFloat(heartRate)
+          })
+        });
+        const data = await response.json();
+        resultDiv.classList.remove('hidden');
+        resultText.textContent = data.stress_level;
+        resultText.classList.remove('text-red-600');
+        resultText.classList.add('text-blue-700');
+        resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch (error) {
+        resultDiv.classList.remove('hidden');
+        resultText.textContent = 'Error predicting stress level. Please try again.';
+        resultText.classList.add('text-red-600');
+        resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  </script>
+</body>
+</html>
