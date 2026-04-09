@@ -4,7 +4,6 @@ import traceback
 import warnings
 import numpy as np
 import pandas as pd
-import joblib
 import os
 
 from sklearn.model_selection import train_test_split
@@ -17,7 +16,7 @@ warnings.filterwarnings('ignore')
 app = Flask(__name__)
 app.secret_key = "STRESS_DETECTION"
 
-# ================= DATABASE (SAFE FOR RENDER) =================
+# ================= DATABASE =================
 mydb = None
 mycursor = None
 
@@ -34,24 +33,8 @@ try:
 except Exception as e:
     print("⚠️ Database not connected:", e)
 
-# ================= HELPER FUNCTIONS =================
-def execute_query(query, values):
-    if mycursor:
-        mycursor.execute(query, values)
-        mydb.commit()
-
-def retrieve_query(query, values=None):
-    if mycursor:
-        if values:
-            mycursor.execute(query, values)
-        else:
-            mycursor.execute(query)
-        return mycursor.fetchall()
-    return []
-
 # ================= ROUTES =================
 @app.route('/')
-@app.route('/index')
 def index():
     return render_template('index.html')
 
@@ -59,10 +42,14 @@ def index():
 def about():
     return render_template('about.html')
 
+# ================= REGISTER =================
 @app.route('/register', methods=["GET", "POST"])
 def register():
     if request.method == "POST":
         try:
+            if not mycursor:
+                return render_template("register.html", message="⚠️ DB not connected")
+
             name = request.form['name']
             email = request.form['email'].strip().lower()
             phone = request.form['phone']
@@ -70,56 +57,68 @@ def register():
             confirm_password = request.form['confirm_password']
 
             if password != confirm_password:
-                return render_template("register.html", message="❌ Passwords do not match")
+                return render_template("register.html", message="❌ Password mismatch")
 
-            if mycursor:
-                mycursor.execute("SELECT email FROM users WHERE email = %s", (email,))
-                if mycursor.fetchone():
-                    return render_template("register.html", message="⚠️ Email already registered")
+            # Check existing user
+            mycursor.execute("SELECT * FROM users WHERE email=%s", (email,))
+            if mycursor.fetchone():
+                return render_template("register.html", message="⚠️ Email already exists")
 
-                query = "INSERT INTO users (name, email, phone, password) VALUES (%s, %s, %s, %s)"
-                execute_query(query, (name, email, phone, password))
+            # Insert user
+            mycursor.execute(
+                "INSERT INTO users (name, email, phone, password) VALUES (%s, %s, %s, %s)",
+                (name, email, phone, password)
+            )
+            mydb.commit()
 
-            return render_template("login.html", message="✅ Registration successful!")
+            return render_template("login.html", message="✅ Registered successfully")
 
         except Exception as e:
             traceback.print_exc()
-            return render_template("register.html", message=f"Server Error: {str(e)}")
+            return render_template("register.html", message=str(e))
 
     return render_template("register.html")
 
+# ================= LOGIN =================
 @app.route('/login', methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         try:
+            if not mycursor:
+                return render_template("login.html", message="⚠️ DB not connected")
+
             email = request.form['email'].strip().lower()
             password = request.form['password']
 
-            if mycursor:
-                mycursor.execute("SELECT * FROM users WHERE email = %s AND password = %s", (email, password))
-                user = mycursor.fetchone()
-            else:
-                user = None
+            mycursor.execute(
+                "SELECT id, name FROM users WHERE email=%s AND password=%s",
+                (email, password)
+            )
+            user = mycursor.fetchone()
+
+            print("LOGIN DEBUG:", user)
 
             if user:
                 session['user_id'] = user[0]
                 session['username'] = user[1]
                 return redirect(url_for('home'))
             else:
-                return render_template("login.html", message="❌ Invalid login or DB not connected")
+                return render_template("login.html", message="❌ Invalid email or password")
 
         except Exception as e:
             traceback.print_exc()
-            return render_template("login.html", message=f"Error: {str(e)}")
+            return render_template("login.html", message=str(e))
 
     return render_template("login.html")
 
+# ================= HOME =================
 @app.route('/home')
 def home():
     if 'user_id' in session:
         return render_template('home.html', username=session.get('username'))
-    return redirect(url_for('index'))
+    return redirect(url_for('login'))
 
+# ================= LOGOUT =================
 @app.route('/logout')
 def logout():
     session.clear()
@@ -142,13 +141,7 @@ def train_model():
     smote = SMOTE(random_state=42)
     X_train_bal, y_train_bal = smote.fit_resample(X_train, y_train)
 
-    model = RandomForestClassifier(
-        n_estimators=100,
-        max_depth=6,
-        min_samples_leaf=10,
-        max_features='sqrt',
-        random_state=42
-    )
+    model = RandomForestClassifier()
     model.fit(X_train_bal, y_train_bal)
 
     return model, scaler
