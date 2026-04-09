@@ -4,8 +4,7 @@ import traceback
 import warnings
 import numpy as np
 import pandas as pd
-import os
-
+import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
@@ -16,25 +15,31 @@ warnings.filterwarnings('ignore')
 app = Flask(__name__)
 app.secret_key = "STRESS_DETECTION"
 
-# ================= DATABASE =================
-mydb = None
-mycursor = None
+# MySQL DB Connection
+mydb = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="",
+    port="3306",
+    database="stress_detection"
+)
+mycursor = mydb.cursor()
 
-try:
-    mydb = mysql.connector.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        user=os.getenv("DB_USER", "root"),
-        password=os.getenv("DB_PASSWORD", ""),
-        database=os.getenv("DB_NAME", "stress_detection"),
-        port=3306
-    )
-    mycursor = mydb.cursor()
-    print("✅ Database connected")
-except Exception as e:
-    print("⚠️ Database not connected:", e)
+# Helper Functions
+def execute_query(query, values):
+    mycursor.execute(query, values)
+    mydb.commit()
 
-# ================= ROUTES =================
+def retrieve_query(query, values=None):
+    if values:
+        mycursor.execute(query, values)
+    else:
+        mycursor.execute(query)
+    return mycursor.fetchall()
+
+# Routes
 @app.route('/')
+@app.route('/index')
 def index():
     return render_template('index.html')
 
@@ -42,14 +47,10 @@ def index():
 def about():
     return render_template('about.html')
 
-# ================= REGISTER =================
 @app.route('/register', methods=["GET", "POST"])
 def register():
     if request.method == "POST":
         try:
-            if not mycursor:
-                return render_template("register.html", message="⚠️ DB not connected")
-
             name = request.form['name']
             email = request.form['email'].strip().lower()
             phone = request.form['phone']
@@ -57,46 +58,32 @@ def register():
             confirm_password = request.form['confirm_password']
 
             if password != confirm_password:
-                return render_template("register.html", message="❌ Password mismatch")
+                return render_template("register.html", message="❌ Passwords do not match")
 
-            # Check existing user
-            mycursor.execute("SELECT * FROM users WHERE email=%s", (email,))
+            mycursor.execute("SELECT email FROM users WHERE email = %s", (email,))
             if mycursor.fetchone():
-                return render_template("register.html", message="⚠️ Email already exists")
+                return render_template("register.html", message="⚠️ Email already registered")
 
-            # Insert user
-            mycursor.execute(
-                "INSERT INTO users (name, email, phone, password) VALUES (%s, %s, %s, %s)",
-                (name, email, phone, password)
-            )
-            mydb.commit()
+            query = "INSERT INTO users (name, email, phone, password) VALUES (%s, %s, %s, %s)"
+            execute_query(query, (name, email, phone, password))
 
-            return render_template("login.html", message="✅ Registered successfully")
+            return render_template("login.html", message="✅ Registration successful! Please login.")
 
         except Exception as e:
             traceback.print_exc()
-            return render_template("register.html", message=str(e))
+            return render_template("register.html", message=f"Server Error: {str(e)}")
 
     return render_template("register.html")
 
-# ================= LOGIN =================
 @app.route('/login', methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         try:
-            if not mycursor:
-                return render_template("login.html", message="⚠️ DB not connected")
-
             email = request.form['email'].strip().lower()
             password = request.form['password']
 
-            mycursor.execute(
-                "SELECT id, name FROM users WHERE email=%s AND password=%s",
-                (email, password)
-            )
+            mycursor.execute("SELECT * FROM users WHERE email = %s AND password = %s", (email, password))
             user = mycursor.fetchone()
-
-            print("LOGIN DEBUG:", user)
 
             if user:
                 session['user_id'] = user[0]
@@ -107,26 +94,61 @@ def login():
 
         except Exception as e:
             traceback.print_exc()
-            return render_template("login.html", message=str(e))
+            return render_template("login.html", message=f"Error: {str(e)}")
 
     return render_template("login.html")
 
-# ================= HOME =================
 @app.route('/home')
 def home():
     if 'user_id' in session:
         return render_template('home.html', username=session.get('username'))
-    return redirect(url_for('login'))
+    return redirect(url_for('index'))
 
-# ================= LOGOUT =================
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('index'))
 
-# ================= MODEL =================
+# Model Accuracy Page
+model_accuracies = {
+    "MLPClassifier": "100%",
+    "DecisionTreeClassifier": "99%",
+    "LogisticRegression": "100%",
+    "RandomForestClassifier": "100%"
+}
+
+@app.route("/tools/model-training", methods=["GET", "POST"])
+def model_training():
+    selected_model = None
+    accuracy = None
+
+    if request.method == "POST":
+        selected_model = request.form.get("model")
+        accuracy = model_accuracies.get(selected_model)
+
+    return render_template("model.html", accuracy=accuracy, selected_model=selected_model)
+
+# ======================================
+# Model Training on Startup
 def train_model():
     df = pd.read_csv('SaYoPillow.csv')
+
+
+    # # Mapping of short column names to full names
+    # column_mapping = {
+    #     'sr': 'snoring_rate',
+    #     'rr': 'respiration_rate',
+    #     't': 'body_temperature',
+    #     'lm': 'limb_movement',
+    #     'bo': 'blood_oxygen',
+    #     'rem': 'eye_movement',
+    #     'sr.1': 'sleeping_hours',
+    #     'hr': 'heart_rate',
+    #     'sl': 'stress_level'
+    # }
+
+    print("Columns in CSV:", df.columns.tolist())
+
 
     X = df.drop("sl", axis=1)
     y = df["sl"]
@@ -141,18 +163,27 @@ def train_model():
     smote = SMOTE(random_state=42)
     X_train_bal, y_train_bal = smote.fit_resample(X_train, y_train)
 
-    model = RandomForestClassifier()
+    model = RandomForestClassifier(
+        n_estimators=100,
+        max_depth=6,
+        min_samples_leaf=10,
+        max_features='sqrt',
+        random_state=42
+    )
     model.fit(X_train_bal, y_train_bal)
 
     return model, scaler
 
 rf_model, scaler = train_model()
 
-# ================= PREDICTION =================
+# Prediction Page
 @app.route('/tools/prediction')
 def prediction_page():
-    return render_template('prediction.html')
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('prediction.html', username=session.get('username'))
 
+# Prediction API
 @app.route('/api/predict', methods=['POST'])
 def predict():
     try:
@@ -170,19 +201,19 @@ def predict():
         ]
 
         if None in features:
-            return jsonify({"error": "All fields required"}), 400
+            return jsonify({"error": "All input fields are required"}), 400
 
         features = np.array(features).reshape(1, -1)
-        scaled = scaler.transform(features)
-        pred = rf_model.predict(scaled)[0]
+        scaled_features = scaler.transform(features)
+        prediction = rf_model.predict(scaled_features)[0]
+        label = "High Stress, Consult a doctor!" if prediction == 1 else "Low Stress, You are fine!"
 
-        result = "High Stress" if pred == 1 else "Low Stress"
-
-        return jsonify({"stress_level": result})
+        return jsonify({"stress_level": label})
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
-# ================= RUN =================
+# ======================================
+
 if __name__ == "__main__":
     app.run(debug=True)
