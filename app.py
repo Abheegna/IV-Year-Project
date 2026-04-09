@@ -5,6 +5,8 @@ import warnings
 import numpy as np
 import pandas as pd
 import joblib
+import os
+
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
@@ -15,29 +17,39 @@ warnings.filterwarnings('ignore')
 app = Flask(__name__)
 app.secret_key = "STRESS_DETECTION"
 
-# MySQL DB Connection
-mydb = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="",
-    port="3306",
-    database="stress_detection"
-)
-mycursor = mydb.cursor()
+# ================= DATABASE (SAFE FOR RENDER) =================
+mydb = None
+mycursor = None
 
-# Helper Functions
+try:
+    mydb = mysql.connector.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        user=os.getenv("DB_USER", "root"),
+        password=os.getenv("DB_PASSWORD", ""),
+        database=os.getenv("DB_NAME", "stress_detection"),
+        port=3306
+    )
+    mycursor = mydb.cursor()
+    print("✅ Database connected")
+except Exception as e:
+    print("⚠️ Database not connected:", e)
+
+# ================= HELPER FUNCTIONS =================
 def execute_query(query, values):
-    mycursor.execute(query, values)
-    mydb.commit()
+    if mycursor:
+        mycursor.execute(query, values)
+        mydb.commit()
 
 def retrieve_query(query, values=None):
-    if values:
-        mycursor.execute(query, values)
-    else:
-        mycursor.execute(query)
-    return mycursor.fetchall()
+    if mycursor:
+        if values:
+            mycursor.execute(query, values)
+        else:
+            mycursor.execute(query)
+        return mycursor.fetchall()
+    return []
 
-# Routes
+# ================= ROUTES =================
 @app.route('/')
 @app.route('/index')
 def index():
@@ -60,14 +72,15 @@ def register():
             if password != confirm_password:
                 return render_template("register.html", message="❌ Passwords do not match")
 
-            mycursor.execute("SELECT email FROM users WHERE email = %s", (email,))
-            if mycursor.fetchone():
-                return render_template("register.html", message="⚠️ Email already registered")
+            if mycursor:
+                mycursor.execute("SELECT email FROM users WHERE email = %s", (email,))
+                if mycursor.fetchone():
+                    return render_template("register.html", message="⚠️ Email already registered")
 
-            query = "INSERT INTO users (name, email, phone, password) VALUES (%s, %s, %s, %s)"
-            execute_query(query, (name, email, phone, password))
+                query = "INSERT INTO users (name, email, phone, password) VALUES (%s, %s, %s, %s)"
+                execute_query(query, (name, email, phone, password))
 
-            return render_template("login.html", message="✅ Registration successful! Please login.")
+            return render_template("login.html", message="✅ Registration successful!")
 
         except Exception as e:
             traceback.print_exc()
@@ -82,15 +95,18 @@ def login():
             email = request.form['email'].strip().lower()
             password = request.form['password']
 
-            mycursor.execute("SELECT * FROM users WHERE email = %s AND password = %s", (email, password))
-            user = mycursor.fetchone()
+            if mycursor:
+                mycursor.execute("SELECT * FROM users WHERE email = %s AND password = %s", (email, password))
+                user = mycursor.fetchone()
+            else:
+                user = None
 
             if user:
                 session['user_id'] = user[0]
                 session['username'] = user[1]
                 return redirect(url_for('home'))
             else:
-                return render_template("login.html", message="❌ Invalid email or password")
+                return render_template("login.html", message="❌ Invalid login or DB not connected")
 
         except Exception as e:
             traceback.print_exc()
@@ -109,46 +125,9 @@ def logout():
     session.clear()
     return redirect(url_for('index'))
 
-# Model Accuracy Page
-model_accuracies = {
-    "MLPClassifier": "100%",
-    "DecisionTreeClassifier": "99%",
-    "LogisticRegression": "100%",
-    "RandomForestClassifier": "100%"
-}
-
-@app.route("/tools/model-training", methods=["GET", "POST"])
-def model_training():
-    selected_model = None
-    accuracy = None
-
-    if request.method == "POST":
-        selected_model = request.form.get("model")
-        accuracy = model_accuracies.get(selected_model)
-
-    return render_template("model.html", accuracy=accuracy, selected_model=selected_model)
-
-# ======================================
-# Model Training on Startup
+# ================= MODEL =================
 def train_model():
     df = pd.read_csv('SaYoPillow.csv')
-
-
-    # # Mapping of short column names to full names
-    # column_mapping = {
-    #     'sr': 'snoring_rate',
-    #     'rr': 'respiration_rate',
-    #     't': 'body_temperature',
-    #     'lm': 'limb_movement',
-    #     'bo': 'blood_oxygen',
-    #     'rem': 'eye_movement',
-    #     'sr.1': 'sleeping_hours',
-    #     'hr': 'heart_rate',
-    #     'sl': 'stress_level'
-    # }
-
-    print("Columns in CSV:", df.columns.tolist())
-
 
     X = df.drop("sl", axis=1)
     y = df["sl"]
@@ -176,14 +155,11 @@ def train_model():
 
 rf_model, scaler = train_model()
 
-# Prediction Page
+# ================= PREDICTION =================
 @app.route('/tools/prediction')
 def prediction_page():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('prediction.html', username=session.get('username'))
+    return render_template('prediction.html')
 
-# Prediction API
 @app.route('/api/predict', methods=['POST'])
 def predict():
     try:
@@ -201,19 +177,19 @@ def predict():
         ]
 
         if None in features:
-            return jsonify({"error": "All input fields are required"}), 400
+            return jsonify({"error": "All fields required"}), 400
 
         features = np.array(features).reshape(1, -1)
-        scaled_features = scaler.transform(features)
-        prediction = rf_model.predict(scaled_features)[0]
-        label = "High Stress, Consult a doctor!" if prediction == 1 else "Low Stress, You are fine!"
+        scaled = scaler.transform(features)
+        pred = rf_model.predict(scaled)[0]
 
-        return jsonify({"stress_level": label})
+        result = "High Stress" if pred == 1 else "Low Stress"
+
+        return jsonify({"stress_level": result})
 
     except Exception as e:
-        return jsonify({"error": f"Server error: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
 
-# ======================================
-
+# ================= RUN =================
 if __name__ == "__main__":
     app.run(debug=True)
